@@ -26,11 +26,17 @@ const STYLE_OPTIONS = [
 ] as const;
 
 const LOADING_MESSAGES = [
-  "ペットの特徴を解析中…",
-  "毛色・耳の形を保持しながら…",
-  "手書き風タッチで描き起こし中…",
+  "ペットのお写真を解析中…",
+  "毛色・耳の形・体格を確認中…",
+  "OpenAI gpt-image-2 で処理中…",
+  "手書き風の吹き出しを配置中…",
+  "肉球スタンプとハートを描き加えています…",
+  "デコレーションフレームを仕上げ中…",
+  "細部の調整中…",
   "もう少しで完成です…",
 ];
+
+const ESTIMATED_SECONDS = 280;
 
 export default function HomePage() {
   const [originalUrl, setOriginalUrl] = useState<string | null>(null);
@@ -40,6 +46,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+  const [elapsedSec, setElapsedSec] = useState(0);
   const [annotations, setAnnotations] = useState<Annotation[]>(DEFAULT_ANNOTATIONS);
   const [petName, setPetName] = useState("チョコちゃん");
   const [clinicName, setClinicName] = useState("○○動物病院");
@@ -83,9 +90,14 @@ export default function HomePage() {
     setError(null);
     setGeneratedUrl(null);
     setLoadingMsgIdx(0);
-    const tick = setInterval(() => {
+    setElapsedSec(0);
+    const startedAt = Date.now();
+    const msgTick = setInterval(() => {
       setLoadingMsgIdx((i) => (i + 1) % LOADING_MESSAGES.length);
-    }, 3200);
+    }, 12_000);
+    const secTick = setInterval(() => {
+      setElapsedSec(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
 
     try {
       const fd = new FormData();
@@ -98,7 +110,8 @@ export default function HomePage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : "予期せぬエラーが発生しました。");
     } finally {
-      clearInterval(tick);
+      clearInterval(msgTick);
+      clearInterval(secTick);
       setLoading(false);
     }
   }, [originalFile, style]);
@@ -195,6 +208,8 @@ export default function HomePage() {
                 imageUrl={generatedUrl}
                 loading={loading}
                 loadingMessage={LOADING_MESSAGES[loadingMsgIdx]}
+                elapsedSec={elapsedSec}
+                estimatedSec={ESTIMATED_SECONDS}
                 annotations={annotations}
                 fallbackUrl={originalUrl}
               />
@@ -351,6 +366,8 @@ function ReportFrame({
   imageUrl,
   loading,
   loadingMessage,
+  elapsedSec,
+  estimatedSec,
   annotations,
   fallbackUrl,
 }: {
@@ -359,6 +376,8 @@ function ReportFrame({
   imageUrl: string | null;
   loading: boolean;
   loadingMessage: string;
+  elapsedSec: number;
+  estimatedSec: number;
   annotations: Annotation[];
   fallbackUrl: string | null;
 }) {
@@ -383,9 +402,22 @@ function ReportFrame({
       <div className="relative aspect-square">
         {/* image (or shimmer while loading) */}
         {loading ? (
-          <div className="absolute inset-0 shimmer flex items-center justify-center">
-            <div className="bg-white/80 backdrop-blur rounded-full px-4 py-2 text-sm font-medium text-[#3b2a1f]/80 shadow">
+          <div className="absolute inset-0 shimmer flex flex-col items-center justify-center gap-3 px-6">
+            <div className="bg-white/90 backdrop-blur rounded-2xl px-5 py-3 text-sm font-medium text-[#3b2a1f]/85 shadow text-center max-w-[90%]">
               ✨ {loadingMessage}
+            </div>
+            <div className="w-full max-w-[80%]">
+              <div className="h-1.5 rounded-full bg-white/60 overflow-hidden">
+                <div
+                  className="h-full bg-[#e89a5a] transition-all duration-1000 ease-linear"
+                  style={{
+                    width: `${Math.min(95, Math.round((elapsedSec / estimatedSec) * 100))}%`,
+                  }}
+                />
+              </div>
+              <p className="text-[11px] text-[#3b2a1f]/60 mt-1.5 text-center">
+                経過 {elapsedSec}秒 / 目安 約{estimatedSec}秒（gpt-image-2 は高品質処理のため4〜5分程度かかります）
+              </p>
             </div>
           </div>
         ) : imageUrl ? (
