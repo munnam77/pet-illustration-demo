@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# わんにゃん肖像 — Pet Illustration Demo
 
-## Getting Started
+A working prototype of an **AI-powered pet illustration service for veterinary clinics**, built for evaluation by Sustainer Inc. (株式会社サスティナ).
 
-First, run the development server:
+## What it does
+
+1. Pet owner / clinic staff uploads a pet photo.
+2. OpenAI `gpt-image-1` transforms the photo into a hand-drawn watercolor illustration **while preserving the pet's individual features** (fur color, ear shape, body type, eye expression).
+3. The result is composed into a "本日のご様子" report card with editable Japanese annotation bubbles — the same format clinics already use today.
+
+Three illustration styles available:
+
+- 🎨 **水彩イラスト** — soft watercolor + pencil
+- ✨ **アニメ風** — clean anime / manga
+- 📖 **絵本風** — children's picture book
+
+## Tech stack
+
+- Next.js 16 (App Router, Turbopack)
+- React 19, TypeScript, Tailwind 4
+- OpenAI Images API (`gpt-image-1`, `image.edit`, `input_fidelity: "high"`)
+- `sharp` for input normalization
+
+## Local development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+echo 'OPENAI_API_KEY=sk-...' > .env.local
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000>.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deployment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Deployed on Vercel. Set the `OPENAI_API_KEY` environment variable in the Vercel project settings.
 
-## Learn More
+## Architecture (production extension)
 
-To learn more about Next.js, take a look at the following resources:
+For the production LINE-integrated service, this prototype maps onto the following components:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+LINE Webhook (Messaging API)
+  → /api/line-webhook  (signature verify, image content fetch)
+  → /api/generate      (this prototype's core)
+  → upload result to object storage
+  → reply via LINE replyMessage / pushMessage
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Clinic-side admin console
+  → annotation templates per clinic
+  → per-pet history
+  → usage metering / billing
+```
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+For evaluation only. © 2026 Cognitive AppDev.

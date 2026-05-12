@@ -1,26 +1,98 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #fdf7ee;
+  --bg-card: #ffffff;
+  --ink: #3b2a1f;
+  --accent: #e89a5a;
+  --accent-soft: #f7d4b0;
+  --pink: #f5b7c5;
+  --mint: #b5dac1;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-bg: var(--bg);
+  --color-bg-card: var(--bg-card);
+  --color-ink: var(--ink);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-pink: var(--pink);
+  --color-mint: var(--mint);
+  --font-sans: var(--font-jp);
+  --font-handwritten: var(--font-handwritten);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-jp), system-ui, -apple-system, sans-serif;
+  background:
+    radial-gradient(1200px 600px at 90% -10%, rgba(245, 183, 197, 0.25), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(181, 218, 193, 0.25), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+.paper {
+  background:
+    radial-gradient(800px 400px at 20% 0%, rgba(255, 234, 210, 0.6), transparent 60%),
+    #fffaf2;
+  background-color: #fffaf2;
+  box-shadow:
+    0 1px 0 rgba(59, 42, 31, 0.04),
+    0 20px 50px -20px rgba(59, 42, 31, 0.18);
+  border: 1px solid rgba(59, 42, 31, 0.06);
+}
+
+.handwritten {
+  font-family: var(--font-handwritten), "Comic Sans MS", cursive;
+}
+
+.bubble {
+  position: relative;
+  background: #fffaf2;
+  border: 1.5px solid rgba(59, 42, 31, 0.12);
+  border-radius: 18px;
+  padding: 10px 14px;
+  box-shadow: 0 4px 14px -4px rgba(59, 42, 31, 0.18);
+}
+
+.bubble::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #fffaf2;
+  border-right: 1.5px solid rgba(59, 42, 31, 0.12);
+  border-bottom: 1.5px solid rgba(59, 42, 31, 0.12);
+  transform: rotate(45deg);
+}
+
+.bubble.tl::after { left: 16px; top: -7px; transform: rotate(225deg); }
+.bubble.tr::after { right: 16px; top: -7px; transform: rotate(225deg); }
+.bubble.bl::after { left: 16px; bottom: -7px; transform: rotate(45deg); }
+.bubble.br::after { right: 16px; bottom: -7px; transform: rotate(45deg); }
+
+.dotgrid {
+  background-image:
+    radial-gradient(rgba(59, 42, 31, 0.08) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+@keyframes shimmer {
+  0% { background-position: -800px 0; }
+  100% { background-position: 800px 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 234, 210, 0.4) 0%,
+    rgba(245, 183, 197, 0.6) 50%,
+    rgba(255, 234, 210, 0.4) 100%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 2.4s linear infinite;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
 }
