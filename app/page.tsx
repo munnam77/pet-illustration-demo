@@ -36,7 +36,7 @@ const LOADING_MESSAGES = [
   "もう少しで完成です…",
 ];
 
-const ESTIMATED_SECONDS = 280;
+const ESTIMATED_SECONDS = 90;
 
 export default function HomePage() {
   const [originalUrl, setOriginalUrl] = useState<string | null>(null);
@@ -416,7 +416,7 @@ function ReportFrame({
                 />
               </div>
               <p className="text-[11px] text-[#3b2a1f]/60 mt-1.5 text-center">
-                経過 {elapsedSec}秒 / 目安 約{estimatedSec}秒（gpt-image-2 は高品質処理のため4〜5分程度かかります）
+                経過 {elapsedSec}秒 / 目安 約{estimatedSec}秒（OpenAI gpt-image-2 を使用）
               </p>
             </div>
           </div>

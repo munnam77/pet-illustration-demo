@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
           image: uploadable,
           prompt,
           size: "1024x1024",
-          quality: "high",
+          quality: "medium",
           stream: false,
         };
         // input_fidelity is supported on gpt-image-1 only — keeps the source
