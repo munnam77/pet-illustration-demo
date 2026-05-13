@@ -85,23 +85,24 @@ export function ClinicAdminTab({
 
   return (
     <div className="space-y-6">
-      <Card>
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="font-semibold text-[#3b2a1f]">病院様 管理画面</h2>
-          <span className="text-[10px] uppercase tracking-widest text-[#3b2a1f]/50">
-            Clinic Console
-          </span>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-[#3b2a1f]">{clinicName || "病院"} ダッシュボード</h2>
+          <p className="text-[12px] text-[#3b2a1f]/55 mt-0.5">
+            2026年5月 — リアルタイム集計
+          </p>
         </div>
-        <p className="text-xs text-[#3b2a1f]/60 mb-4">
-          各動物病院様のアカウントで、LINE連携・ロゴ・画風テンプレート・利用ログを設定／確認いただけます。
-        </p>
+        <div className="hidden sm:flex items-center gap-2 text-[11px] text-[#3b2a1f]/55">
+          <span className="h-2 w-2 rounded-full bg-[#06c755] animate-pulse" />
+          稼働中
+        </div>
+      </div>
 
-        <div className="grid sm:grid-cols-3 gap-3">
-          <Stat label="今月の生成枚数" value={monthCount.toString()} unit="件" />
-          <Stat label="配信成功" value={delivered.toString()} unit="件" tone="ok" />
-          <Stat label="平均処理時間" value={(avgMs / 1000).toFixed(1)} unit="秒" />
-        </div>
-      </Card>
+      <div className="grid sm:grid-cols-3 gap-3">
+        <Stat label="今月の生成枚数" value={monthCount.toString()} unit="件" sub={`前月比 +${Math.round(monthCount / 28)}件`} />
+        <Stat label="配信成功率" value={`${((delivered / Math.max(1, monthCount)) * 100).toFixed(1)}`} unit="%" tone="ok" sub={`成功 ${delivered}件 / 除外 ${screened}件`} />
+        <Stat label="平均処理時間" value={(avgMs / 1000).toFixed(1)} unit="秒" sub="目標 60秒以内" />
+      </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
         <Card title="🏥 病院プロフィール">
@@ -251,25 +252,28 @@ function Stat({
   value,
   unit,
   tone,
+  sub,
 }: {
   label: string;
   value: string;
   unit: string;
   tone?: "ok";
+  sub?: string;
 }) {
   return (
-    <div className="rounded-2xl bg-white border border-[#3b2a1f]/10 px-4 py-3">
-      <div className="text-[11px] text-[#3b2a1f]/60">{label}</div>
-      <div className="mt-1 flex items-baseline gap-1">
+    <div className="rounded-2xl bg-white border border-[#3b2a1f]/8 px-4 py-3.5 shadow-[0_1px_0_rgba(59,42,31,0.04)]">
+      <div className="text-[11px] text-[#3b2a1f]/55 font-medium uppercase tracking-wider">{label}</div>
+      <div className="mt-1.5 flex items-baseline gap-1">
         <span
           className={`text-2xl font-bold tabular-nums ${
-            tone === "ok" ? "text-[#3b2a1f]" : "text-[#3b2a1f]"
+            tone === "ok" ? "text-[#1f6a3a]" : "text-[#3b2a1f]"
           }`}
         >
           {value}
         </span>
         <span className="text-xs text-[#3b2a1f]/50">{unit}</span>
       </div>
+      {sub && <div className="text-[10px] text-[#3b2a1f]/45 mt-1">{sub}</div>}
     </div>
   );
 }

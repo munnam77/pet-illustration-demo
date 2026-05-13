@@ -27,9 +27,9 @@ const yuseiMagic = Yusei_Magic({
 });
 
 export const metadata: Metadata = {
-  title: "わんにゃん肖像 | 動物病院向けAIペットイラスト生成",
+  title: "わんにゃん肖像 — 動物病院 × LINE 公式アカウント向け AI ペットイラスト",
   description:
-    "飼い主様のスマホから送られたペットのお写真を、その場で温かい手書き風イラストにしてお返しする、動物病院様向けAIサービス。",
+    "ペットの写真をLINEで送るだけで、個体特徴を保ったまま手書き風イラストに。動物病院様の待合室体験を、その場で「思い出になる一枚」に変える AI サービス。",
 };
 
 export default function RootLayout({

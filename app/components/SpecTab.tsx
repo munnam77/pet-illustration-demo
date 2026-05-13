@@ -5,17 +5,22 @@ import { Card } from "./Card";
 export function SpecTab() {
   return (
     <div className="space-y-6">
-      <Card>
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="font-semibold text-[#3b2a1f]">技術仕様 / 提案概要</h2>
-          <span className="text-[10px] uppercase tracking-widest text-[#3b2a1f]/50">
-            Tech Stack & Estimates
-          </span>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-bold text-[#3b2a1f]">プラン・仕様</h2>
+          <p className="text-[12px] text-[#3b2a1f]/55 mt-0.5">
+            導入時の技術構成と、開発／保守の料金体系
+          </p>
         </div>
-        <p className="text-xs text-[#3b2a1f]/60">
-          頂戴したご要件への弊社からの推奨技術構成と、本プロトタイプで使用している実装をまとめています。
-        </p>
-      </Card>
+        <a
+          href="https://cognitiveappdev.com"
+          target="_blank"
+          rel="noreferrer"
+          className="text-[11px] text-[#3b2a1f]/60 hover:text-[#3b2a1f] underline hidden sm:inline"
+        >
+          開発元 →
+        </a>
+      </div>
 
       <div className="grid lg:grid-cols-2 gap-6">
         <Card title="🧱 推奨技術構成">
@@ -47,9 +52,9 @@ export function SpecTab() {
             </li>
             <li>
               <strong>第三段階（モデルABテスト）：</strong>
-              本プロトタイプは即時利用可能な画像編集AI（gpt-image-2 / 同等モデル）を使用。
-              本制作では <em>Stable Diffusion XL + IP-Adapter</em> / <em>Gemini 2.5 Image (nano banana)</em>
-              を含む3〜4モデルで実画像をABテストし、貴社のサンプル品質に合致するものを選定します。
+              本サービスは即時利用可能な画像編集AI（gpt-image-2 / 同等モデル）をベースに、
+              <em>Stable Diffusion XL + IP-Adapter</em> / <em>Gemini 2.5 Image (nano banana)</em>
+              を含む3〜4モデルを実画像でABテストし、最も品質が安定する組み合わせで運用します。
             </li>
             <li>
               <strong>第四段階（オーバーレイ合成）：</strong>
@@ -59,7 +64,7 @@ export function SpecTab() {
             </li>
           </ol>
           <p className="text-[11px] text-[#3b2a1f]/55 mt-3">
-            ※ 要件定義フェーズで貴社のサンプル品質目標を擦り合わせ、最終モデル構成・コスト・1枚あたり処理時間を確定します。
+            ※ 導入時にお客様のサンプル基準を擦り合わせ、最終モデル構成・コスト・処理時間を確定します。
           </p>
         </Card>
       </div>
@@ -77,7 +82,7 @@ export function SpecTab() {
       </Card>
 
       <div className="grid lg:grid-cols-2 gap-6">
-        <Card title="📦 ご見積り（2パターン）">
+        <Card title="📦 導入プラン（買い取り型）">
           <div className="space-y-3">
             <QuoteRow
               title="MVP版（段階開発・第1リリース）"
@@ -111,7 +116,7 @@ export function SpecTab() {
             />
           </div>
           <p className="text-[11px] text-[#3b2a1f]/55 mt-3">
-            ※ 上記は参考レンジ。要件定義の結果、ロゴ提供形式・LINEチャネル数・運用フローにより調整します。
+            ※ 上記は参考レンジ。LINE チャネル数・運用フロー・カスタム画風数により調整します。
           </p>
         </Card>
 
@@ -149,21 +154,21 @@ export function SpecTab() {
             />
           </div>
           <p className="text-[11px] text-[#3b2a1f]/55 mt-3">
-            ※ ランサーズ外での直接契約（業務委託契約）も対応可能です。
+            ※ 業務委託契約での直接ご契約にも対応いたします。
           </p>
         </Card>
       </div>
 
-      <Card title="📅 スケジュール（フルスペック想定）">
+      <Card title="📅 導入スケジュール（フルスペック想定）">
         <div className="grid sm:grid-cols-5 gap-2 text-[11px]">
           <Phase no="①" weeks="1〜2週" label="要件定義 / 設計" />
           <Phase no="②" weeks="3〜6週" label="コア機能（LINE / LIFF / AI生成）" />
-          <Phase no="③" weeks="7〜10週" label="管理画面（病院 / 弊社）・レポート" />
+          <Phase no="③" weeks="7〜10週" label="管理画面・レポート" />
           <Phase no="④" weeks="11〜14週" label="任意機能・QA・負荷試験" />
           <Phase no="⑤" weeks="15〜18週" label="UAT・本番リリース・引き渡し" />
         </div>
         <p className="text-[11px] text-[#3b2a1f]/55 mt-3">
-          ※ MVP版で6〜8週間でのリリースも可能。発注後できるだけ早期の公開希望に合わせ、段階開発もご提案できます。
+          ※ MVP版で6〜8週間でのリリースも可能。段階開発で早期公開できます。
         </p>
       </Card>
 
@@ -177,10 +182,10 @@ export function SpecTab() {
         </ul>
       </Card>
 
-      <Card title="🧠 過去の関連実績">
+      <Card title="🧠 開発元 — Cognitive AppDev の関連実績">
         <ul className="space-y-2 text-sm text-[#3b2a1f]/85 list-disc pl-5">
           <li>
-            <strong>BrandGuard AI</strong> — AI画像／文章生成（GPT-image・GPT-4）+ ブランドガイドライン整合性チェックSaaS
+            <strong>BrandGuard AI</strong> — AI画像／文章生成（GPT-image・GPT-4）+ ブランドガイドライン整合性チェック SaaS
           </li>
           <li>
             <strong>LINE OAコンサル AI Bot</strong> — LINE Messaging API + GPT による自動応答／チャット履歴管理
@@ -193,7 +198,7 @@ export function SpecTab() {
           </li>
         </ul>
         <p className="text-[11px] text-[#3b2a1f]/55 mt-3">
-          詳細実績・ご参考URLは別途お送りします（<a className="underline" href="https://cognitiveappdev.com">cognitiveappdev.com</a>）。
+          詳細：<a className="underline" href="https://cognitiveappdev.com" target="_blank" rel="noreferrer">cognitiveappdev.com</a>
         </p>
       </Card>
     </div>

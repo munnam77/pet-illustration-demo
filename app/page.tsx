@@ -15,18 +15,18 @@ import {
 
 type TabId = "owner" | "clinic" | "sustainer" | "spec";
 
-const TABS: { id: TabId; label: string; sub: string; emoji: string }[] = [
-  { id: "owner", label: "飼い主体験", sub: "LINE / LIFF プレビュー", emoji: "📱" },
-  { id: "clinic", label: "病院管理画面", sub: "Clinic Console", emoji: "🏥" },
-  { id: "sustainer", label: "弊社管理画面", sub: "Operator Console", emoji: "🛠" },
-  { id: "spec", label: "技術仕様 / お見積り", sub: "Tech & Quote", emoji: "📄" },
+const TABS: { id: TabId; label: string; role: string; emoji: string }[] = [
+  { id: "owner", label: "飼い主モード", role: "Owner", emoji: "📱" },
+  { id: "clinic", label: "病院スタッフ", role: "Clinic", emoji: "🏥" },
+  { id: "sustainer", label: "運営", role: "Operator", emoji: "🛠" },
+  { id: "spec", label: "プラン・仕様", role: "Plan", emoji: "📄" },
 ];
 
 export default function HomePage() {
   const [tab, setTab] = useState<TabId>("owner");
 
   const [petName, setPetName] = useState("チョコちゃん");
-  const [clinicName, setClinicName] = useState("○○動物病院");
+  const [clinicName, setClinicName] = useState("桜が丘どうぶつクリニック");
   const [annotations, setAnnotations] = useState<Annotation[]>(DEFAULT_ANNOTATIONS);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [enabledStyles, setEnabledStyles] = useState<Set<StyleId>>(
@@ -38,30 +38,24 @@ export default function HomePage() {
       <Hero />
 
       <nav className="max-w-6xl mx-auto px-4 sm:px-6 mb-6">
-        <div className="paper rounded-2xl p-2 flex flex-wrap gap-1.5">
+        <div className="rounded-2xl bg-white/70 backdrop-blur border border-[#3b2a1f]/8 px-1 py-1 flex items-center gap-1 overflow-x-auto">
+          <span className="text-[10px] uppercase tracking-widest text-[#3b2a1f]/40 px-2 hidden sm:inline">
+            ロール
+          </span>
           {TABS.map((t) => {
             const active = t.id === tab;
             return (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex-1 min-w-[10rem] px-3 py-2.5 rounded-xl text-left transition ${
+                className={`flex-1 min-w-[7.5rem] px-3 py-2 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-1.5 ${
                   active
-                    ? "bg-[#3b2a1f] text-[#fffaf2]"
-                    : "bg-transparent text-[#3b2a1f] hover:bg-[#3b2a1f]/5"
+                    ? "bg-[#3b2a1f] text-[#fffaf2] shadow-sm"
+                    : "text-[#3b2a1f]/70 hover:text-[#3b2a1f] hover:bg-[#3b2a1f]/5"
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">{t.emoji}</span>
-                  <span className="font-semibold text-sm">{t.label}</span>
-                </div>
-                <div
-                  className={`text-[10px] mt-0.5 ${
-                    active ? "text-[#fffaf2]/65" : "text-[#3b2a1f]/50"
-                  }`}
-                >
-                  {t.sub}
-                </div>
+                <span>{t.emoji}</span>
+                <span className="whitespace-nowrap">{t.label}</span>
               </button>
             );
           })}
@@ -102,14 +96,22 @@ export default function HomePage() {
 
 function Footer() {
   return (
-    <footer className="border-t border-[#3b2a1f]/10 mt-4 py-8 text-center text-xs text-[#3b2a1f]/50">
-      <p>
-        Prototype built by{" "}
-        <a className="underline" href="https://cognitiveappdev.com" target="_blank" rel="noreferrer">
-          Cognitive AppDev
-        </a>
-      </p>
-      <p className="mt-1">© 2026 Cognitive AppDev — for evaluation only</p>
+    <footer className="border-t border-[#3b2a1f]/10 mt-4">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-[#3b2a1f]/55">
+        <div className="flex items-center gap-2">
+          <span className="h-6 w-6 rounded-lg bg-[#e89a5a]/85 flex items-center justify-center text-white text-xs">
+            🐾
+          </span>
+          <span className="font-medium text-[#3b2a1f]/75">わんにゃん肖像</span>
+          <span>© 2026 株式会社サスティナ</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <a className="hover:text-[#3b2a1f]" href="#">利用規約</a>
+          <a className="hover:text-[#3b2a1f]" href="#">プライバシー</a>
+          <a className="hover:text-[#3b2a1f]" href="#">特定商取引法</a>
+          <a className="hover:text-[#3b2a1f]" href="#">お問い合わせ</a>
+        </div>
+      </div>
     </footer>
   );
 }
