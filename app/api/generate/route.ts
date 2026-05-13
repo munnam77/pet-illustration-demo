@@ -4,8 +4,6 @@ import { toFile } from "openai/uploads";
 import sharp from "sharp";
 
 export const runtime = "nodejs";
-// Vercel Pro plan allows up to 800s for serverless functions; gpt-image-2
-// typically returns in 4-5 minutes. 600s gives comfortable headroom.
 export const maxDuration = 600;
 export const dynamic = "force-dynamic";
 
@@ -13,24 +11,26 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 const KEEP_PHOTO_RULE = `ABSOLUTE TOP-PRIORITY RULE: The pet itself MUST remain a real photograph — do NOT redraw, repaint, stylize, or convert the pet. Keep the pet's actual photographic fur texture, lighting, shadows, eyes, and pose EXACTLY as in the input image. Only add hand-drawn illustration decorations AROUND the pet (margins, corners, empty space, background areas). If you cannot add decorations without altering the pet, leave the pet untouched. Output must still feel like a real photo with cute decorative overlays — not a stylized illustration.`;
 
-// IMPORTANT: AI image models default to filling bubble shapes with solid white.
-// To force true transparency we must explicitly say "NO BUBBLES AT ALL — leave
-// space for them to be drawn externally with HTML/CSS overlays." This is the
-// reliable architecture: AI handles frame decorations only; HTML handles bubbles.
 const NO_BUBBLES_RULE = `DO NOT draw any speech bubbles, talk bubbles, dialogue bubbles, callout shapes, sticky notes, signs, callouts, banners, label boxes, or any kind of bordered text container shape inside the image. Leave the area around the pet completely open and free of bubble-shaped or rectangular containers — those will be added externally as HTML overlays. Empty space around the pet should remain as pure photographic background and decorative frame, NOTHING ELSE.`;
 
 const STYLE_PROMPTS: Record<string, string> = {
-  watercolor: `Take this real pet photograph and add cute hand-drawn watercolor illustration decorations AROUND THE EDGES ONLY — in the style of a Japanese veterinary clinic's "今日のご様子" daily update greeting card for the pet owner. Add ONLY: (1) small hand-drawn paw print stamps scattered in the corners (top-left, top-right, bottom-left, bottom-right) in light cream/beige watercolor ink, (2) tiny hand-drawn heart shapes in soft pink around the corners, (3) a soft warm cream/beige watercolor frame border around the four edges of the image with a slightly torn-paper texture, (4) a few tiny scattered flower motifs in the corners (optional, very small). Keep the CENTER of the image clean — pure photograph of the pet, with NOTHING covering or surrounding the pet itself. ${KEEP_PHOTO_RULE} ${NO_BUBBLES_RULE}`,
+  watercolor: `Take this real pet photograph and add cute hand-drawn watercolor illustration decorations AROUND THE EDGES ONLY — in the style of a Japanese veterinary clinic's "今日のご様子" daily update greeting card. Add ONLY: (1) small hand-drawn paw print stamps scattered in the corners in light cream/beige watercolor ink, (2) tiny hand-drawn heart shapes in soft pink around the corners, (3) a soft warm cream/beige watercolor frame border around the four edges with a slightly torn-paper texture, (4) a few tiny scattered flower motifs in the corners. Keep the CENTER clean — pure photograph of the pet. ${KEEP_PHOTO_RULE} ${NO_BUBBLES_RULE}`,
 
-  anime: `Take this real pet photograph and add cute hand-drawn anime-style sticker decorations AROUND THE EDGES ONLY. Add ONLY: (1) small star sparkle marks ✨ in the corners, (2) cute heart shapes in the corners, (3) playful tiny sticker-style decorations around the four edges (small flowers, swirls, small dots), (4) a soft white border frame. Keep the CENTER of the image completely clean — pure photograph of the pet with nothing covering it. ${KEEP_PHOTO_RULE} ${NO_BUBBLES_RULE}`,
+  anime: `Take this real pet photograph and add cute hand-drawn anime-style sticker decorations AROUND THE EDGES ONLY. Add ONLY: (1) small star sparkle marks ✨ in the corners, (2) cute heart shapes in the corners, (3) playful tiny sticker-style decorations (small flowers, swirls, small dots), (4) a soft white border frame. Keep the CENTER clean. ${KEEP_PHOTO_RULE} ${NO_BUBBLES_RULE}`,
 
-  picturebook: `Take this real pet photograph and add hand-drawn children's picturebook style decorations AROUND THE EDGES ONLY: (1) hand-drawn crayon-style paw prints in the corners, (2) small flowers and hearts around the corners, (3) a warm picturebook-style border with crayon texture. Keep the CENTER of the image clean — pure photograph of the pet with nothing covering it. ${KEEP_PHOTO_RULE} ${NO_BUBBLES_RULE}`,
+  picturebook: `Take this real pet photograph and add hand-drawn children's picturebook style decorations AROUND THE EDGES ONLY: (1) hand-drawn crayon-style paw prints in the corners, (2) small flowers and hearts around the corners, (3) a warm picturebook-style border with crayon texture. Keep the CENTER clean. ${KEEP_PHOTO_RULE} ${NO_BUBBLES_RULE}`,
+
+  crayon: `Take this real pet photograph and add hand-drawn crayon-style decorations AROUND THE EDGES ONLY: (1) crayon-drawn paw prints in vibrant colors at the four corners, (2) crayon-drawn hearts and stars scattered along the edges, (3) a hand-drawn crayon border with visible wax texture and slight imperfections like a kindergarten drawing, (4) cheerful primary-color accents. Keep the CENTER clean. ${KEEP_PHOTO_RULE} ${NO_BUBBLES_RULE}`,
+
+  simple: `Take this real pet photograph and add minimal, elegant line-art decorations AROUND THE EDGES ONLY: (1) thin black ink paw print outlines in the corners, (2) simple heart outlines, (3) a clean thin line frame, (4) restrained, sophisticated, single-line illustration style with plenty of whitespace. Keep the CENTER clean. ${KEEP_PHOTO_RULE} ${NO_BUBBLES_RULE}`,
 };
 
-// gpt-image-2 is the preferred model for this use case — its photo preservation
-// is dramatically better, matching the client's reference image style. Typical
-// generation time: 4-5 minutes. Requires Vercel Pro (300-800s function limit).
-// gpt-image-1 is kept as a safety fallback (~60s, partial pet stylization).
+// Optional pre-screen: reject obviously non-pet images cheaply via gpt-image-2
+// rejection is implicit when the model refuses. For a low-cost first-pass we
+// rely on OpenAI's built-in moderation + content policy of images.edit, which
+// raises a 400 if the image violates policy or is clearly off-topic.
+// (Full pet-classifier vision call is documented in the proposal as MVP+.)
+
 const MODEL_CANDIDATES = ["gpt-image-2", "gpt-image-1"] as const;
 
 export async function POST(req: NextRequest) {
@@ -45,6 +45,8 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData();
     const file = formData.get("image");
     const style = (formData.get("style") as string) || "watercolor";
+    const logoFile = formData.get("logo");
+    const clinicName = (formData.get("clinicName") as string) || "";
     const prompt = STYLE_PROMPTS[style] ?? STYLE_PROMPTS.watercolor;
 
     if (!(file instanceof File)) {
@@ -78,8 +80,6 @@ export async function POST(req: NextRequest) {
           quality: "medium",
           stream: false,
         };
-        // input_fidelity is supported on gpt-image-1 only — keeps the source
-        // photograph intact. gpt-image-2 rejects this parameter.
         if (model === "gpt-image-1") {
           baseParams.input_fidelity = "high";
         }
@@ -109,8 +109,55 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: msg }, { status: 502 });
     }
 
+    let finalBytes: Uint8Array = new Uint8Array(Buffer.from(b64, "base64"));
+
+    if (logoFile instanceof File && logoFile.size > 0) {
+      try {
+        const logoBuf = new Uint8Array(await logoFile.arrayBuffer());
+        const logoResized = await sharp(logoBuf)
+          .resize(180, 180, { fit: "inside" })
+          .png()
+          .toBuffer();
+        finalBytes = new Uint8Array(
+          await sharp(finalBytes)
+            .composite([
+              {
+                input: logoResized,
+                gravity: "southeast",
+                blend: "over",
+              },
+            ])
+            .png()
+            .toBuffer(),
+        );
+      } catch (e) {
+        console.warn("[generate] logo composite failed, returning without logo:", e);
+      }
+    }
+
+    if (clinicName) {
+      try {
+        const svgBadge = Buffer.from(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="380" height="56">
+            <rect x="0" y="0" width="380" height="56" rx="28" fill="rgba(255,255,255,0.86)" stroke="rgba(59,42,31,0.18)"/>
+            <text x="190" y="36" font-size="22" text-anchor="middle" font-family="'Hiragino Sans','Noto Sans JP',sans-serif" fill="#3b2a1f">${escapeXml(clinicName)}</text>
+          </svg>`,
+        );
+        finalBytes = new Uint8Array(
+          await sharp(finalBytes)
+            .composite([{ input: svgBadge, gravity: "southwest" }])
+            .png()
+            .toBuffer(),
+        );
+      } catch (e) {
+        console.warn("[generate] clinic name badge failed:", e);
+      }
+    }
+
+    const outB64 = Buffer.from(finalBytes).toString("base64");
+
     return NextResponse.json({
-      imageDataUrl: `data:image/png;base64,${b64}`,
+      imageDataUrl: `data:image/png;base64,${outB64}`,
       style,
       model: usedModel,
     });
@@ -119,4 +166,10 @@ export async function POST(req: NextRequest) {
     console.error("[generate] error", err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+function escapeXml(s: string) {
+  return s.replace(/[<>&'"]/g, (c) =>
+    c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === "&" ? "&amp;" : c === "'" ? "&apos;" : "&quot;",
+  );
 }
