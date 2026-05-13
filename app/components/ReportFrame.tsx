@@ -38,7 +38,7 @@ export function ReportFrame({
   return (
     <div className="rounded-2xl overflow-hidden border border-[#3b2a1f]/10 bg-[#fffaf2] relative">
       <div className="px-4 py-2.5 border-b border-[#3b2a1f]/10 flex items-center justify-between text-sm">
-        <span className="handwritten text-lg text-[#d8884a]">
+        <span className="jp-brush text-xl text-[#d8884a] tracking-wide">
           🐾 本日のご様子をお送りします 🐾
         </span>
         <span className="text-[10px] text-[#3b2a1f]/50">{clinicName}</span>
@@ -103,7 +103,7 @@ export function ReportFrame({
 
       {imageUrl && (
         <div className="px-4 py-3 border-t border-[#3b2a1f]/10 bg-[#fffaf2]">
-          <p className="handwritten text-[15px] text-[#3b2a1f] leading-relaxed">
+          <p className="jp-handwritten text-[16px] text-[#3b2a1f] leading-relaxed whitespace-pre-line">
             {closingText ||
               `${petName}は本日も大きな変化はなく、安定して過ごしています。😊\n引き続き、しっかりとケアしてまいりますので、ご安心ください。`}
           </p>
@@ -121,11 +121,11 @@ function Bubble({ annotation, side }: { annotation: Annotation; side: "left" | "
   }[annotation.color];
   return (
     <div className={`bubble ${side === "left" ? "tl" : "tr"}`}>
-      <div className="flex items-center gap-1.5 text-[13px] font-semibold text-[#3b2a1f]">
-        <span className={`inline-block w-2 h-2 rounded-full ${colorBar}`} />
+      <div className="flex items-center gap-1.5 jp-handwritten text-[14px] font-semibold text-[#3b2a1f]">
+        <span className={`inline-block w-2 h-2 rounded-full ${colorBar} shrink-0`} />
         {annotation.text}
       </div>
-      <p className="text-[11px] text-[#3b2a1f]/70 mt-1 leading-snug">{annotation.detail}</p>
+      <p className="jp-handwritten text-[12px] text-[#3b2a1f]/75 mt-1 leading-snug">{annotation.detail}</p>
     </div>
   );
 }

@@ -1,0 +1,98 @@
+{
+  "source": "IMG_7948 — client-provided reference for target aesthetic",
+  "description": "Japanese vet clinic '本日のご様子' (today's update) photo card. A real pet photo overlaid with delicate hand-drawn accents and handwritten Japanese status bubbles.",
+
+  "overall_aesthetic": {
+    "mood": "warm, intimate, kawaii but restrained, handcrafted",
+    "feel": "like a school nurse's note or a personal scrapbook page — NOT commercial illustration",
+    "color_temperature": "warm cream/beige base with soft pastel accents",
+    "density": "RESTRAINED — empty space matters. The pet photo is the hero, accents are supporting cast",
+    "key_differentiator_from_AI_look": "All non-photo elements look like REAL PEN strokes on paper — slightly wobbly lines, imperfect spacing, low saturation, no digital gradients"
+  },
+
+  "pet": {
+    "type": "dark grey / black toy poodle",
+    "rendering": "ABSOLUTELY UNMODIFIED real photograph — fur texture, eyes, lighting, blanket, all preserved exactly",
+    "position": "center of the frame, occupies ~50% of canvas"
+  },
+
+  "background": {
+    "type": "real photograph — beige patterned blanket / sofa",
+    "treatment": "untouched; no filters, no replacement"
+  },
+
+  "hand_drawn_overlays": {
+    "paw_prints": {
+      "count": "4-6, scattered",
+      "size": "very small, ~3-4% of canvas width each",
+      "color": "soft cream / faded brown ink (#D4B896 — #B8956E)",
+      "style": "simple — 1 large pad + 4 small toe dots, like a real ink stamp",
+      "placement": "corners (top-left, top-right, bottom-left, bottom-right) and 1-2 along edges",
+      "imperfection": "slightly uneven ink density, like a faded rubber stamp"
+    },
+    "hearts": {
+      "count": "3-4 tiny hearts",
+      "size": "tiny (~2% of canvas width)",
+      "color": "soft dusty pink (#F5B7C5)",
+      "style": "OPEN OUTLINE only (not filled), single hand-drawn line with slight wobble",
+      "placement": "anchored next to bubbles as decoration, or scattered in margins"
+    },
+    "stars_or_flowers": {
+      "count": "2-3 tiny accents",
+      "color": "soft yellow (#F5D578) or pink",
+      "style": "5-petal flower outline OR simple 5-point star outline, all tiny"
+    },
+    "arrows": {
+      "count": "3-4 small curved arrows pointing from bubbles toward the pet's body parts (face, paws, fur, body)",
+      "color": "dark brown/grey ink (#3B2A1F)",
+      "style": "hand-drawn thin line with simple arrowhead, slightly curved, casual not precise"
+    },
+    "title_decoration": {
+      "location": "top of canvas",
+      "elements": "small em-dash strokes + tiny paw print silhouettes flanking the title text",
+      "function": "frame the title '本日のご様子をお送りします'"
+    },
+    "edge_frame": {
+      "type": "thin cream/ivory torn-paper border around all four edges",
+      "thickness": "4-6px",
+      "opacity": "subtle — lets the photo show through, just enough to soften the corners"
+    }
+  },
+
+  "bubbles_and_text": {
+    "rendered_by": "HTML/CSS overlay (NOT the AI image model)",
+    "shape": "cloud-shaped with scalloped/wavy edges",
+    "outline": "single thin brown/grey ink line (#3B2A1F) with slight wobble",
+    "fill": "translucent white (rgba(255,255,255,0.42)) with backdrop blur",
+    "text_style": "handwritten Japanese — soft, casual, slightly cursive",
+    "text_color": "warm dark brown (#3B2A1F)",
+    "left_accent_dot": "small colored dot before each title (pink / mint / accent)",
+    "content_examples": [
+      "食欲あります / ごはんをしっかり完食してくれました！",
+      "お水も飲めています / おトイレも問題ありません",
+      "リラックスして過ごしています / 落ち着いていて、安心しています",
+      "元気にしています / お部屋の中で少し動いたり、おもちゃで遊んだりしています",
+      "毛並みもきれいです / ふわふわで体調も安定しています"
+    ]
+  },
+
+  "what_the_AI_must_produce": "ONLY the real photo + the hand_drawn_overlays section above. NO bubbles, NO text, NO letters of any language. Bubbles and text are added by HTML/CSS.",
+
+  "what_makes_AI_generations_fail": [
+    "Treating decorations as commercial stickers (too bold, too saturated)",
+    "Over-decorating — putting 10+ accents instead of 4-6",
+    "Modifying the pet itself (redrawing fur, eyes, pose)",
+    "Adding bubbles or text inside the image (we want truly transparent bubbles via HTML)",
+    "Using digital gradients or vector-clean lines (must look like real pen)",
+    "Filled hearts instead of open outline hearts",
+    "Adding cute mascot characters or extra animals"
+  ],
+
+  "what_makes_AI_generations_succeed": [
+    "Restraint — fewer, smaller, more delicate accents",
+    "Faded ink colors (cream, dusty pink, soft yellow) — NOT vivid colors",
+    "Slight imperfection in lines and stamps (human-hand feel)",
+    "Empty margin space is GOOD — let the photo breathe",
+    "Soft cream torn-paper edge frame to hide harsh photo edges"
+  ]
+}

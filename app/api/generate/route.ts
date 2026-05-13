@@ -9,20 +9,78 @@ export const dynamic = "force-dynamic";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const KEEP_PHOTO_RULE = `ABSOLUTE TOP-PRIORITY RULE: The pet itself MUST remain a real photograph — do NOT redraw, repaint, stylize, or convert the pet. Keep the pet's actual photographic fur texture, lighting, shadows, eyes, and pose EXACTLY as in the input image. Only add hand-drawn illustration decorations AROUND the pet (margins, corners, empty space, background areas). If you cannot add decorations without altering the pet, leave the pet untouched. Output must still feel like a real photo with cute decorative overlays — not a stylized illustration.`;
+// Reference image: a Japanese vet clinic's "本日のご様子" photo card —
+// real photo of a dark toy poodle on a beige blanket, with delicate hand-drawn
+// accents (small paw prints in faded brown ink, tiny open-outline pink hearts,
+// soft cream torn-paper edge border). Bubbles/text are HTML overlays.
+// Key failure modes: AI tends to (a) over-decorate, (b) use commercial sticker
+// styling, (c) modify the pet, (d) add bubbles. The prompts below explicitly
+// forbid each of these.
 
-const NO_BUBBLES_RULE = `DO NOT draw any speech bubbles, talk bubbles, dialogue bubbles, callout shapes, sticky notes, signs, callouts, banners, label boxes, or any kind of bordered text container shape inside the image. Leave the area around the pet completely open and free of bubble-shaped or rectangular containers — those will be added externally as HTML overlays. Empty space around the pet should remain as pure photographic background and decorative frame, NOTHING ELSE.`;
+const KEEP_PHOTO_RULE = `ABSOLUTE TOP-PRIORITY RULE — DO NOT MODIFY THE PET OR BACKGROUND: The input is a real photograph and the pet (every pixel of fur, eyes, paws, body, pose) and the background (blanket, sofa, lighting, shadows) MUST remain BYTE-FOR-BYTE identical to the input photo. You are NOT redrawing, stylizing, illustrating, repainting, or "enhancing" anything in the photo. Imagine yourself as a Japanese vet clinic nurse who PRINTED OUT the photo on cream paper, then took a real ink pen and stamped a few small decorations in the empty margins. That is your only job. If a decoration would touch or alter the pet or background, DO NOT add it.`;
+
+const NO_BUBBLES_RULE = `DO NOT draw ANY of the following INSIDE the image: speech bubbles, callout bubbles, dialogue clouds, sticky notes, banners, signs, label boxes, rectangular text containers, scalloped clouds, or ANY bordered shape that could contain text. Also do NOT add ANY letters, numbers, kana, kanji, or text of any language. These elements are added externally via HTML overlays — your image must leave the area around the pet completely OPEN for HTML bubbles to be placed on top.`;
+
+const RESTRAINT_RULE = `RESTRAINT IS CRITICAL — LESS IS MORE: The reference aesthetic is delicate Japanese stationery, NOT commercial vinyl stickers. Use FEWER, SMALLER, MORE FADED decorations. Each paw print should be no larger than ~4% of canvas width. Total decoration count should not exceed ~10 items combined. Empty margin space is BEAUTIFUL and DESIRED — do NOT fill every corner. Colors must be FADED and DESATURATED (faded cream, dusty pink, pale yellow) — NEVER vivid or saturated. Lines must look HAND-DRAWN with slight wobble and imperfection — NEVER digital, NEVER vector-clean, NEVER gradient-filled.`;
+
+const FORBID_DIGITAL_LOOK = `FORBIDDEN: digital gradients, vector-perfect curves, saturated cartoon colors, mascot characters, additional animals, glossy shadows, 3D effects, lens flares, "AI-art" looking elements. EVERY non-photo element must look like REAL INK FROM A REAL PEN OR STAMP on REAL PAPER.`;
 
 const STYLE_PROMPTS: Record<string, string> = {
-  watercolor: `Take this real pet photograph and add cute hand-drawn watercolor illustration decorations AROUND THE EDGES ONLY — in the style of a Japanese veterinary clinic's "今日のご様子" daily update greeting card. Add ONLY: (1) small hand-drawn paw print stamps scattered in the corners in light cream/beige watercolor ink, (2) tiny hand-drawn heart shapes in soft pink around the corners, (3) a soft warm cream/beige watercolor frame border around the four edges with a slightly torn-paper texture, (4) a few tiny scattered flower motifs in the corners. Keep the CENTER clean — pure photograph of the pet. ${KEEP_PHOTO_RULE} ${NO_BUBBLES_RULE}`,
+  watercolor: `You are adding minimal hand-drawn accents to a real pet photograph, mimicking the aesthetic of a Japanese veterinary clinic's "本日のご様子" (today's update) daily report card.
 
-  anime: `Take this real pet photograph and add cute hand-drawn anime-style sticker decorations AROUND THE EDGES ONLY. Add ONLY: (1) small star sparkle marks ✨ in the corners, (2) cute heart shapes in the corners, (3) playful tiny sticker-style decorations (small flowers, swirls, small dots), (4) a soft white border frame. Keep the CENTER clean. ${KEEP_PHOTO_RULE} ${NO_BUBBLES_RULE}`,
+ADD ONLY THESE ELEMENTS, NOTHING ELSE:
+1. EXACTLY 4-5 small paw print stamps (one in each corner, plus 1 optional along an edge). Each paw print: ~3% of canvas width, simple shape (1 pad + 4 toe dots), color = faded warm cream/beige ink (#D4B896 or #B8956E), looks like a slightly-faded real rubber stamp.
+2. EXACTLY 3 tiny OPEN-OUTLINE hearts (NOT filled hearts — just thin line outlines). Color = soft dusty pink (#F5B7C5). Size = ~2% of canvas width. Lines slightly wobbly like real pen.
+3. EXACTLY 2 tiny accent marks — small 5-petal flower outlines or simple star outlines in pale yellow (#F5D578) or pink. Tiny, ~1.5% of canvas width.
+4. A thin SOFT CREAM/IVORY torn-paper edge border (only 4-6 pixel thickness) around all four edges, semi-transparent. This softens the photo edges but does NOT cover the pet.
 
-  picturebook: `Take this real pet photograph and add hand-drawn children's picturebook style decorations AROUND THE EDGES ONLY: (1) hand-drawn crayon-style paw prints in the corners, (2) small flowers and hearts around the corners, (3) a warm picturebook-style border with crayon texture. Keep the CENTER clean. ${KEEP_PHOTO_RULE} ${NO_BUBBLES_RULE}`,
+${KEEP_PHOTO_RULE}
+${NO_BUBBLES_RULE}
+${RESTRAINT_RULE}
+${FORBID_DIGITAL_LOOK}`,
 
-  crayon: `Take this real pet photograph and add hand-drawn crayon-style decorations AROUND THE EDGES ONLY: (1) crayon-drawn paw prints in vibrant colors at the four corners, (2) crayon-drawn hearts and stars scattered along the edges, (3) a hand-drawn crayon border with visible wax texture and slight imperfections like a kindergarten drawing, (4) cheerful primary-color accents. Keep the CENTER clean. ${KEEP_PHOTO_RULE} ${NO_BUBBLES_RULE}`,
+  anime: `Add minimal hand-drawn anime-stationery accents to this real pet photograph. ADD ONLY:
+1. EXACTLY 3-4 small star sparkle outlines (✦ outline shape, not filled) in soft pastel pink or pale yellow, ~2-3% of canvas width each, scattered in corners.
+2. EXACTLY 3 tiny open-outline hearts (thin pen line, dusty pink #F5B7C5).
+3. EXACTLY 2-3 tiny dot accents in soft pastel.
+4. Thin soft-white torn-paper edge border (4-6px).
 
-  simple: `Take this real pet photograph and add minimal, elegant line-art decorations AROUND THE EDGES ONLY: (1) thin black ink paw print outlines in the corners, (2) simple heart outlines, (3) a clean thin line frame, (4) restrained, sophisticated, single-line illustration style with plenty of whitespace. Keep the CENTER clean. ${KEEP_PHOTO_RULE} ${NO_BUBBLES_RULE}`,
+${KEEP_PHOTO_RULE}
+${NO_BUBBLES_RULE}
+${RESTRAINT_RULE}
+${FORBID_DIGITAL_LOOK}`,
+
+  picturebook: `Add minimal hand-drawn picturebook accents to this real pet photograph, like soft pencil illustrations on cream paper. ADD ONLY:
+1. EXACTLY 4 small paw prints, drawn as if with a soft pencil (slight grain texture), in warm earth-tone brown.
+2. EXACTLY 3 tiny open-outline hearts, pencil-drawn dusty pink.
+3. EXACTLY 2 tiny picturebook flowers (simple outline, ~5 petals) in soft pastel.
+4. Thin warm cream torn-paper border (4-6px).
+
+${KEEP_PHOTO_RULE}
+${NO_BUBBLES_RULE}
+${RESTRAINT_RULE}
+${FORBID_DIGITAL_LOOK}`,
+
+  crayon: `Add minimal hand-drawn crayon-style accents to this real pet photograph, like a child's casual drawing on top of a printed photo. ADD ONLY:
+1. EXACTLY 4 small crayon-textured paw prints (slight waxy crayon texture visible), in warm earth tones — not bright primary colors.
+2. EXACTLY 3 tiny open-outline crayon hearts in soft pink.
+3. EXACTLY 2-3 tiny crayon dot/star accents.
+4. A thin crayon-textured cream border (4-6px), slightly imperfect line.
+
+${KEEP_PHOTO_RULE}
+${NO_BUBBLES_RULE}
+${RESTRAINT_RULE}
+${FORBID_DIGITAL_LOOK}`,
+
+  simple: `Add ULTRA-MINIMAL elegant line-art accents to this real pet photograph. The aesthetic is sophisticated Japanese stationery — extreme restraint. ADD ONLY:
+1. EXACTLY 3-4 small paw print outlines (just simple line drawings, no fill), in thin black or dark brown ink, ~3% of canvas width.
+2. EXACTLY 2 tiny open-outline hearts, single thin line.
+3. A single thin clean line frame around the four edges (2-3px), in muted brown ink.
+
+${KEEP_PHOTO_RULE}
+${NO_BUBBLES_RULE}
+${RESTRAINT_RULE}
+${FORBID_DIGITAL_LOOK}`,
 };
 
 // Optional pre-screen: reject obviously non-pet images cheaply via gpt-image-2

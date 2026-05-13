@@ -20,6 +20,8 @@
   --color-mint: var(--mint);
   --font-sans: var(--font-jp);
   --font-handwritten: var(--font-handwritten);
+  --font-jp-handwritten: var(--font-jp-handwritten);
+  --font-jp-brush: var(--font-jp-brush);
 }
 
 body {
@@ -43,7 +45,18 @@ body {
 }
 
 .handwritten {
-  font-family: var(--font-handwritten), "Comic Sans MS", cursive;
+  font-family: var(--font-handwritten), var(--font-jp-brush), var(--font-jp-handwritten), "Comic Sans MS", cursive;
+}
+
+/* Japanese handwritten — for bubble text and report annotations.
+   Klee One mimics gentle Japanese kid-handwriting; pairs well with Caveat for mixed text. */
+.jp-handwritten {
+  font-family: var(--font-jp-handwritten), var(--font-handwritten), "Hiragino Maru Gothic ProN", sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.jp-brush {
+  font-family: var(--font-jp-brush), var(--font-jp-handwritten), "Hiragino Maru Gothic ProN", sans-serif;
 }
 
 .bubble {

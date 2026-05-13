@@ -13,7 +13,7 @@ export function Hero() {
       <h1 className="text-2xl sm:text-4xl font-bold tracking-tight leading-tight text-[#3b2a1f]">
         飼い主様の<span className="text-[#e89a5a]">LINE</span>から、
         <br className="hidden sm:inline" />
-        ペットの今日のご様子を<span className="handwritten text-[#d8884a]">温かい</span>
+        ペットの今日のご様子を<span className="jp-brush text-[#d8884a]">温かい</span>
         <span className="text-[#e89a5a]">手書き風</span>イラストに。
       </h1>
       <p className="mt-3 text-sm sm:text-base text-[#3b2a1f]/70 max-w-3xl">

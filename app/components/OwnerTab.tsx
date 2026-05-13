@@ -83,9 +83,9 @@ export function OwnerTab({
   );
 
   const onPickSample = useCallback(async () => {
-    const res = await fetch("/sample-poodle.jpg");
+    const res = await fetch("/sample-cat.jpg");
     const blob = await res.blob();
-    const file = new File([blob], "sample-poodle.jpg", { type: "image/jpeg" });
+    const file = new File([blob], "sample-cat.jpg", { type: "image/jpeg" });
     handleFile(file);
   }, [handleFile]);
 
@@ -308,7 +308,7 @@ function UploadCard({
             }}
             className="px-4 py-2 rounded-full bg-white border border-[#3b2a1f]/15 hover:border-[#3b2a1f]/40"
           >
-            🐩 サンプル写真で試す
+            🐈 サンプル写真で試す
           </button>
         </div>
       </div>
