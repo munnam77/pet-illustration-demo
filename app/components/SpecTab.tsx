@@ -23,8 +23,8 @@ export function SpecTab() {
             <Row k="フロントエンド" v="Next.js 16 + React 19 + Tailwind 4（LIFF対応）" />
             <Row k="バックエンド" v="Next.js API Routes（Node.js 22 / Edge互換）" />
             <Row k="LINE 連携" v="Messaging API（Webhook受信 / Push送信） + LIFF" />
-            <Row k="AI 画像生成" v="OpenAI gpt-image-2（image.edit） — 必要に応じ Gemini Image / Stable Diffusion + ControlNet を選択肢" />
-            <Row k="不適切検出" v="OpenAI gpt-4o-mini Vision で事前判定" />
+            <Row k="AI 画像生成" v="最新の画像編集AIモデル（複数の選択肢からABテストで最適化） — Gemini Image / Stable Diffusion + IP-Adapter / ControlNet も候補" />
+            <Row k="特徴検出 / 不適切検出" v="Vision AI（軽量モデル）で部位検出と画像判定を事前実行" />
             <Row k="ロゴ合成" v="sharp（Node.js）でサーバーサイド合成" />
             <Row k="DB" v="Supabase (PostgreSQL) — 病院・利用ログ・トークン管理" />
             <Row k="ストレージ" v="Cloudflare R2 / Supabase Storage（生成画像保存）" />
@@ -36,20 +36,19 @@ export function SpecTab() {
         <Card title="🎯 個体特徴の保持アプローチ">
           <ol className="space-y-2.5 text-sm text-[#3b2a1f]/85 list-decimal pl-4">
             <li>
-              <strong>第一段階：</strong>OpenAI <code className="bg-[#3b2a1f]/5 px-1 rounded">gpt-image-2</code> の <code className="bg-[#3b2a1f]/5 px-1 rounded">image.edit</code>（写真を入力としてイラスト化）。
-              元写真の毛色・耳形・体格・表情を保持しやすく、本プロトタイプもこちらを採用。
+              <strong>第一段階：</strong>写真は加工せず実画像として保持。Vision AIでペットの部位（目・口・体・足など）座標を抽出。
             </li>
             <li>
-              <strong>第二段階（クオリティ向上）：</strong> Stable Diffusion + <em>IP-Adapter</em> / <em>ControlNet (Reference / Tile / Lineart)</em> で
-              個体写真を condition として渡し、画風モデル（手書きLoRA）と組み合わせて識別精度を向上。
+              <strong>第二段階：</strong>抽出座標をもとに HTML / SVG オーバーレイで手書き風の吹き出し・矢印・装飾を合成。
+              すべて手書きフォント（Klee One / Yusei Magic）でレンダリングするため、AI生成によくある文字化け（豆腐文字）は発生しません。
             </li>
             <li>
-              <strong>第三段階（必要に応じ）：</strong> Gemini 2.5 Image (nano banana) も併用候補。
-              モデルABテストを行い、最良の組み合わせを選定。
+              <strong>第三段階（オプション）：</strong>Stable Diffusion + IP-Adapter / ControlNet で
+              手書きイラスト化レイヤーをABテスト。Gemini Image (nano banana) も併用候補。
             </li>
             <li>
-              <strong>事後処理：</strong>NO BUBBLES プロンプト＋HTML/CSSオーバーレイで吹き出しを完全に透過。
-              アイコン・ロゴはサーバー側で sharp により合成。
+              <strong>事後処理：</strong>完成画像をPNGで一括書き出し（html-to-image）。
+              フォントもラスタライズされて埋め込まれるため、LINE配信先でも確実に同じ見た目を再現できます。
             </li>
           </ol>
           <p className="text-[11px] text-[#3b2a1f]/55 mt-3">
@@ -60,9 +59,9 @@ export function SpecTab() {
 
       <Card title="⚡ パフォーマンス / コスト目安">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <MetricCard label="1枚の生成時間" value="90秒〜2分" sub="gpt-image-2 medium / 1024px" />
+          <MetricCard label="1枚の生成時間" value="数秒〜90秒" sub="基本オーバーレイは即時、AI画風化はオプション" />
           <MetricCard label="同時接続" value="20+" sub="Vercel サーバーレスは水平スケール" />
-          <MetricCard label="API原価" value="¥10〜15" sub="1枚あたり（OpenAI medium）" />
+          <MetricCard label="API原価" value="¥0〜15" sub="基本構成は0円、AI画風化使用時のみ課金" />
           <MetricCard label="月運用費" value="¥3,000〜" sub="Vercel + Supabase + 監視（病院10件想定）" />
         </div>
         <p className="text-[11px] text-[#3b2a1f]/55 mt-4">
@@ -80,7 +79,7 @@ export function SpecTab() {
               points={[
                 "LINE Bot連携（Webhook受信 / Push送信）",
                 "LIFF UI（写真選択・画風選択・ロゴ表示有無）",
-                "AI画像生成（gpt-image-2、3画風）",
+                "ペット特徴の自動検出 + HTML/SVG手書きオーバーレイ（即時生成）",
                 "ロゴ合成（クライアント設定）",
                 "基本管理画面（病院プロフィール / 利用ログ閲覧）",
                 "弊社管理画面の最小版（病院アカウント発行）",

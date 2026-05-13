@@ -107,8 +107,7 @@ function Footer() {
         Prototype built by{" "}
         <a className="underline" href="https://cognitiveappdev.com" target="_blank" rel="noreferrer">
           Cognitive AppDev
-        </a>{" "}
-        — Powered by OpenAI gpt-image-2 + Next.js 16
+        </a>
       </p>
       <p className="mt-1">© 2026 Cognitive AppDev — for evaluation only</p>
     </footer>
