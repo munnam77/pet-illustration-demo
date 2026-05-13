@@ -9,87 +9,105 @@ export const dynamic = "force-dynamic";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Reference image: a Japanese vet clinic's "本日のご様子" photo card —
-// real photo of a dark toy poodle on a beige blanket, with delicate hand-drawn
-// accents (small paw prints in faded brown ink, tiny open-outline pink hearts,
-// soft cream torn-paper edge border). Bubbles/text are HTML overlays.
-// Key failure modes: AI tends to (a) over-decorate, (b) use commercial sticker
-// styling, (c) modify the pet, (d) add bubbles. The prompts below explicitly
-// forbid each of these.
+// === CLIENT REQUIREMENT (kitano-snc / 株式会社サスティナ, 2026-05-13) ===
+// 「写真をそのまま使うのではなく、手書き風イラストへ変換するのが前提」
+// "The photo must be converted into a hand-drawn illustration, not kept as-is."
+// 「写真のペットさん本人に見えるよう、個体の特徴を保ちながらイラスト化」
+// "The illustration must look like THE specific pet — preserve breed, fur color, ears, body, expression."
+// 「トイプードルと柴犬の区別がつく、茶トラと黒トラの区別がつく、というレベルは最低限」
+// Breed/coat-pattern recognition is the minimum bar.
+//
+// Reference techniques suggested by client: img2img, ControlNet, IP-Adapter, Gemini Image (nano-banana).
+// In this prototype we use OpenAI gpt-image-2's image.edit (img2img) because it is the only
+// production-stable identity-preserving image model with an API right now; gpt-image-1 acts as fallback
+// with `input_fidelity: "high"`.
+//
+// The HTML layer adds bubbles / text / arrows / title — the AI image must leave the pet centered
+// with empty margin space so the overlay system has room to breathe.
 
-const KEEP_PHOTO_RULE = `ABSOLUTE TOP-PRIORITY RULE — DO NOT MODIFY THE PET OR BACKGROUND: The input is a real photograph and the pet (every pixel of fur, eyes, paws, body, pose) and the background (blanket, sofa, lighting, shadows) MUST remain BYTE-FOR-BYTE identical to the input photo. You are NOT redrawing, stylizing, illustrating, repainting, or "enhancing" anything in the photo. Imagine yourself as a Japanese vet clinic nurse who PRINTED OUT the photo on cream paper, then took a real ink pen and stamped a few small decorations in the empty margins. That is your only job. If a decoration would touch or alter the pet or background, DO NOT add it.`;
+const IDENTITY_PRESERVATION_RULES = `
+CRITICAL — PRESERVE THIS SPECIFIC PET'S IDENTITY:
+The owner of this pet must look at the result and instantly say "あ、うちの子だ！" ("Oh, that's MY pet!").
+A generic "brown dog" or "tabby cat" illustration is REJECTED. You must match:
+- BREED / SPECIES: toy poodle stays toy poodle (curly coat, round face); shiba stays shiba (pointed ears, foxy face). NEVER substitute.
+- COAT COLOR & PATTERN: dark grey poodle stays dark grey (not brown). Brown tabby stripes stay brown (not black tabby).
+- DISTINCTIVE MARKINGS: white chest, eye masks, paw socks, spots, freckles — copy them exactly to the illustration.
+- EAR SHAPE: floppy, pointed, curled, cropped — preserve.
+- BODY PROPORTIONS: stocky vs slim, short-legged vs long-legged — preserve.
+- FACIAL EXPRESSION & GAZE: looking at camera, looking away, tongue out, sleepy eyes — preserve.
+- POSE: sitting, lying down, head tilted — preserve roughly so the illustration feels like the same moment.`;
 
-const NO_BUBBLES_RULE = `DO NOT draw ANY of the following INSIDE the image: speech bubbles, callout bubbles, dialogue clouds, sticky notes, banners, signs, label boxes, rectangular text containers, scalloped clouds, or ANY bordered shape that could contain text. Also do NOT add ANY letters, numbers, kana, kanji, or text of any language. These elements are added externally via HTML overlays — your image must leave the area around the pet completely OPEN for HTML bubbles to be placed on top.`;
+const COMPOSITION_RULES = `
+COMPOSITION:
+- Output: a single hand-drawn pet PORTRAIT illustration.
+- Pet occupies ~55–65% of the canvas, roughly centered, head/face in the upper-middle region.
+- Background: soft warm cream paper (#fdf6e8 ish) with subtle paper grain — NO complex environment, NO furniture clutter, NO replicated sofa pattern. The original real-world background should be replaced with this cream paper.
+- Leave the CORNERS and MARGIN AREAS visually quiet — small bands of empty cream space on left/right/top/bottom — because HTML bubbles, arrows, and decorations will be composited on top.
+- No frames, no borders, no torn-paper edges in the AI output — those are HTML.`;
 
-const RESTRAINT_RULE = `RESTRAINT IS CRITICAL — LESS IS MORE: The reference aesthetic is delicate Japanese stationery, NOT commercial vinyl stickers. Use FEWER, SMALLER, MORE FADED decorations. Each paw print should be no larger than ~4% of canvas width. Total decoration count should not exceed ~10 items combined. Empty margin space is BEAUTIFUL and DESIRED — do NOT fill every corner. Colors must be FADED and DESATURATED (faded cream, dusty pink, pale yellow) — NEVER vivid or saturated. Lines must look HAND-DRAWN with slight wobble and imperfection — NEVER digital, NEVER vector-clean, NEVER gradient-filled.`;
+const FORBIDDEN_RULES = `
+FORBIDDEN — IF YOU INCLUDE ANY OF THESE, THE OUTPUT IS REJECTED:
+- ANY speech bubbles, callout clouds, sticky notes, banners, label boxes, scalloped clouds, or shapes that could contain text.
+- ANY letters, numbers, kana, kanji, or text of ANY language anywhere in the image.
+- ANY additional animals, mascots, humans, or human body parts.
+- The original photograph rendered as-is (this MUST be an illustrated/hand-drawn version, not the photo).
+- Heavy digital gradients, glossy plastic 3D, vector-perfect curves, AI-art-generic look, "stock illustration" cliché.
+- Saturated commercial cartoon colors. Keep palette soft and natural.`;
 
-const FORBID_DIGITAL_LOOK = `FORBIDDEN: digital gradients, vector-perfect curves, saturated cartoon colors, mascot characters, additional animals, glossy shadows, 3D effects, lens flares, "AI-art" looking elements. EVERY non-photo element must look like REAL INK FROM A REAL PEN OR STAMP on REAL PAPER.`;
+const STYLE_DESCRIPTIONS: Record<string, string> = {
+  watercolor: `STYLE: Soft Japanese watercolor (水彩) illustration.
+- Gentle watercolor washes with visible paper grain.
+- Thin warm-grey or soft-brown outline (hand-drawn pen feel, slight wobble).
+- Colors slightly desaturated, warm tonality.
+- Edges of color slightly soft (watercolor bleed at fur outline).
+- Mood: warm, tender, like a vet's note card.`,
 
-const STYLE_PROMPTS: Record<string, string> = {
-  watercolor: `You are adding minimal hand-drawn accents to a real pet photograph, mimicking the aesthetic of a Japanese veterinary clinic's "本日のご様子" (today's update) daily report card.
+  anime: `STYLE: Clean kawaii anime illustration.
+- Smooth anime line-art with cel-shaded color blocks (2–3 tones per region).
+- Slightly enlarged expressive eyes (but still recognizably the pet's eye color and shape).
+- Soft pastel palette, gentle blush highlights.
+- Mood: cute but tasteful — NOT chibi, NOT mascot-like.`,
 
-ADD ONLY THESE ELEMENTS, NOTHING ELSE:
-1. EXACTLY 4-5 small paw print stamps (one in each corner, plus 1 optional along an edge). Each paw print: ~3% of canvas width, simple shape (1 pad + 4 toe dots), color = faded warm cream/beige ink (#D4B896 or #B8956E), looks like a slightly-faded real rubber stamp.
-2. EXACTLY 3 tiny OPEN-OUTLINE hearts (NOT filled hearts — just thin line outlines). Color = soft dusty pink (#F5B7C5). Size = ~2% of canvas width. Lines slightly wobbly like real pen.
-3. EXACTLY 2 tiny accent marks — small 5-petal flower outlines or simple star outlines in pale yellow (#F5D578) or pink. Tiny, ~1.5% of canvas width.
-4. A thin SOFT CREAM/IVORY torn-paper edge border (only 4-6 pixel thickness) around all four edges, semi-transparent. This softens the photo edges but does NOT cover the pet.
+  picturebook: `STYLE: Japanese children's picturebook (絵本) illustration.
+- Soft pencil-sketch outline with gentle color-pencil fills.
+- Slightly grainy/textured shading.
+- Warm earth-tone palette.
+- Mood: like a page from a wholesome Japanese picturebook for ages 3–6.`,
 
-${KEEP_PHOTO_RULE}
-${NO_BUBBLES_RULE}
-${RESTRAINT_RULE}
-${FORBID_DIGITAL_LOOK}`,
+  crayon: `STYLE: Crayon-on-paper (クレヨン画) illustration.
+- Visible waxy crayon stroke texture; slightly imperfect lines.
+- Soft mid-saturation colors layered with crayon shading marks.
+- Casual, hand-made feel.
+- Mood: like a thoughtful child's drawing — skilled but unrefined.`,
 
-  anime: `Add minimal hand-drawn anime-stationery accents to this real pet photograph. ADD ONLY:
-1. EXACTLY 3-4 small star sparkle outlines (✦ outline shape, not filled) in soft pastel pink or pale yellow, ~2-3% of canvas width each, scattered in corners.
-2. EXACTLY 3 tiny open-outline hearts (thin pen line, dusty pink #F5B7C5).
-3. EXACTLY 2-3 tiny dot accents in soft pastel.
-4. Thin soft-white torn-paper edge border (4-6px).
-
-${KEEP_PHOTO_RULE}
-${NO_BUBBLES_RULE}
-${RESTRAINT_RULE}
-${FORBID_DIGITAL_LOOK}`,
-
-  picturebook: `Add minimal hand-drawn picturebook accents to this real pet photograph, like soft pencil illustrations on cream paper. ADD ONLY:
-1. EXACTLY 4 small paw prints, drawn as if with a soft pencil (slight grain texture), in warm earth-tone brown.
-2. EXACTLY 3 tiny open-outline hearts, pencil-drawn dusty pink.
-3. EXACTLY 2 tiny picturebook flowers (simple outline, ~5 petals) in soft pastel.
-4. Thin warm cream torn-paper border (4-6px).
-
-${KEEP_PHOTO_RULE}
-${NO_BUBBLES_RULE}
-${RESTRAINT_RULE}
-${FORBID_DIGITAL_LOOK}`,
-
-  crayon: `Add minimal hand-drawn crayon-style accents to this real pet photograph, like a child's casual drawing on top of a printed photo. ADD ONLY:
-1. EXACTLY 4 small crayon-textured paw prints (slight waxy crayon texture visible), in warm earth tones — not bright primary colors.
-2. EXACTLY 3 tiny open-outline crayon hearts in soft pink.
-3. EXACTLY 2-3 tiny crayon dot/star accents.
-4. A thin crayon-textured cream border (4-6px), slightly imperfect line.
-
-${KEEP_PHOTO_RULE}
-${NO_BUBBLES_RULE}
-${RESTRAINT_RULE}
-${FORBID_DIGITAL_LOOK}`,
-
-  simple: `Add ULTRA-MINIMAL elegant line-art accents to this real pet photograph. The aesthetic is sophisticated Japanese stationery — extreme restraint. ADD ONLY:
-1. EXACTLY 3-4 small paw print outlines (just simple line drawings, no fill), in thin black or dark brown ink, ~3% of canvas width.
-2. EXACTLY 2 tiny open-outline hearts, single thin line.
-3. A single thin clean line frame around the four edges (2-3px), in muted brown ink.
-
-${KEEP_PHOTO_RULE}
-${NO_BUBBLES_RULE}
-${RESTRAINT_RULE}
-${FORBID_DIGITAL_LOOK}`,
+  simple: `STYLE: Minimal Japanese line-art portrait.
+- Single thin ink line outline (warm dark brown), no rendering.
+- Optional VERY subtle single flat wash of muted color for the pet body — or pure line only.
+- Generous empty cream paper.
+- Mood: refined, elegant, restrained — sophisticated stationery aesthetic.`,
 };
 
-// Optional pre-screen: reject obviously non-pet images cheaply via gpt-image-2
-// rejection is implicit when the model refuses. For a low-cost first-pass we
-// rely on OpenAI's built-in moderation + content policy of images.edit, which
-// raises a 400 if the image violates policy or is clearly off-topic.
-// (Full pet-classifier vision call is documented in the proposal as MVP+.)
+const MODEL_CANDIDATES = [
+  { name: "gpt-image-2", extra: {} as Record<string, unknown> },
+  { name: "gpt-image-1", extra: { input_fidelity: "high" } as Record<string, unknown> },
+] as const;
 
-const MODEL_CANDIDATES = ["gpt-image-2", "gpt-image-1"] as const;
+function buildPrompt(style: string) {
+  const styleDesc = STYLE_DESCRIPTIONS[style] ?? STYLE_DESCRIPTIONS.watercolor;
+  return `You are a master Japanese illustrator producing a single soft hand-drawn pet portrait for a Japanese veterinary clinic's "本日のご様子" (today's update) daily report card.
+
+GOAL: Take the input photograph of a pet and produce a hand-drawn illustrated version of THE SAME individual pet.
+
+${IDENTITY_PRESERVATION_RULES}
+
+${styleDesc}
+
+${COMPOSITION_RULES}
+
+${FORBIDDEN_RULES}
+
+Now produce the illustration.`;
+}
 
 export async function POST(req: NextRequest) {
   if (!process.env.OPENAI_API_KEY) {
@@ -104,8 +122,7 @@ export async function POST(req: NextRequest) {
     const file = formData.get("image");
     const style = (formData.get("style") as string) || "watercolor";
     const logoFile = formData.get("logo");
-    const clinicName = (formData.get("clinicName") as string) || "";
-    const prompt = STYLE_PROMPTS[style] ?? STYLE_PROMPTS.watercolor;
+    const prompt = buildPrompt(style);
 
     if (!(file instanceof File)) {
       return NextResponse.json({ error: "image file is required" }, { status: 400 });
@@ -116,9 +133,11 @@ export async function POST(req: NextRequest) {
 
     const rawBuffer = Buffer.from(await file.arrayBuffer());
 
+    // Normalize to a 1024-wide portrait-ish PNG; gpt-image-2 accepts 1024x1024,
+    // 1024x1536, 1536x1024. Portrait 3:4 best fits our ReportCard canvas.
     const normalized = await sharp(rawBuffer)
       .rotate()
-      .resize(1024, 1024, { fit: "inside", withoutEnlargement: false })
+      .resize(1024, 1536, { fit: "cover", position: "attention" })
       .png()
       .toBuffer();
 
@@ -128,25 +147,23 @@ export async function POST(req: NextRequest) {
     let lastErr: unknown = null;
     let b64: string | undefined;
 
-    for (const model of MODEL_CANDIDATES) {
+    for (const candidate of MODEL_CANDIDATES) {
       try {
         const baseParams: Record<string, unknown> = {
-          model,
+          model: candidate.name,
           image: uploadable,
           prompt,
-          size: "1024x1024",
+          size: "1024x1536",
           quality: "medium",
           stream: false,
+          ...candidate.extra,
         };
-        if (model === "gpt-image-1") {
-          baseParams.input_fidelity = "high";
-        }
         const result = (await client.images.edit(
           baseParams as unknown as Parameters<typeof client.images.edit>[0],
         )) as unknown as { data?: Array<{ b64_json?: string }> };
         b64 = result.data?.[0]?.b64_json;
         if (b64) {
-          usedModel = model;
+          usedModel = candidate.name;
           break;
         }
       } catch (e) {
@@ -156,9 +173,9 @@ export async function POST(req: NextRequest) {
         const retryable =
           status === 404 ||
           status === 400 ||
-          /not.?found|does.?not.?exist|invalid.*model|does not support/i.test(msg);
+          /not.?found|does.?not.?exist|invalid.*model|does not support|unsupported/i.test(msg);
         if (!retryable) throw e;
-        console.warn(`[generate] model ${model} failed, trying fallback:`, msg);
+        console.warn(`[generate] model ${candidate.name} failed, trying fallback:`, msg);
       }
     }
 
@@ -169,6 +186,8 @@ export async function POST(req: NextRequest) {
 
     let finalBytes: Uint8Array = new Uint8Array(Buffer.from(b64, "base64"));
 
+    // Server-side logo composite (clinic-controlled). Owner-selectable on/off
+    // is handled UI-side by simply skipping the logoFile FormData entry.
     if (logoFile instanceof File && logoFile.size > 0) {
       try {
         const logoBuf = new Uint8Array(await logoFile.arrayBuffer());
@@ -193,25 +212,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (clinicName) {
-      try {
-        const svgBadge = Buffer.from(
-          `<svg xmlns="http://www.w3.org/2000/svg" width="380" height="56">
-            <rect x="0" y="0" width="380" height="56" rx="28" fill="rgba(255,255,255,0.86)" stroke="rgba(59,42,31,0.18)"/>
-            <text x="190" y="36" font-size="22" text-anchor="middle" font-family="'Hiragino Sans','Noto Sans JP',sans-serif" fill="#3b2a1f">${escapeXml(clinicName)}</text>
-          </svg>`,
-        );
-        finalBytes = new Uint8Array(
-          await sharp(finalBytes)
-            .composite([{ input: svgBadge, gravity: "southwest" }])
-            .png()
-            .toBuffer(),
-        );
-      } catch (e) {
-        console.warn("[generate] clinic name badge failed:", e);
-      }
-    }
-
     const outB64 = Buffer.from(finalBytes).toString("base64");
 
     return NextResponse.json({
@@ -224,10 +224,4 @@ export async function POST(req: NextRequest) {
     console.error("[generate] error", err);
     return NextResponse.json({ error: message }, { status: 500 });
   }
-}
-
-function escapeXml(s: string) {
-  return s.replace(/[<>&'"]/g, (c) =>
-    c === "<" ? "&lt;" : c === ">" ? "&gt;" : c === "&" ? "&amp;" : c === "'" ? "&apos;" : "&quot;",
-  );
 }

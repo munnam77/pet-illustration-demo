@@ -66,9 +66,9 @@ export function SpecTab() {
 
       <Card title="⚡ パフォーマンス / コスト目安">
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <MetricCard label="1枚の生成時間" value="数秒〜90秒" sub="基本オーバーレイは即時、AI画風化はオプション" />
+          <MetricCard label="1枚の生成時間" value="60〜120秒" sub="AIによるイラスト化＋HTML/SVG合成" />
           <MetricCard label="同時接続" value="20+" sub="Vercel サーバーレスは水平スケール" />
-          <MetricCard label="API原価" value="¥0〜15" sub="基本構成は0円、AI画風化使用時のみ課金" />
+          <MetricCard label="API原価" value="¥10〜15 / 枚" sub="OpenAI gpt-image-2 medium品質目安" />
           <MetricCard label="月運用費" value="¥3,000〜" sub="Vercel + Supabase + 監視（病院10件想定）" />
         </div>
         <p className="text-[11px] text-[#3b2a1f]/55 mt-4">
@@ -86,7 +86,7 @@ export function SpecTab() {
               points={[
                 "LINE Bot連携（Webhook受信 / Push送信）",
                 "LIFF UI（写真選択・画風選択・ロゴ表示有無）",
-                "ペット特徴の自動検出 + HTML/SVG手書きオーバーレイ（即時生成）",
+                "AIイラスト化（個体特徴を保持）＋ HTML/SVG手書きオーバーレイ",
                 "ロゴ合成（クライアント設定）",
                 "基本管理画面（病院プロフィール / 利用ログ閲覧）",
                 "弊社管理画面の最小版（病院アカウント発行）",

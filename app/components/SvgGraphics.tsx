@@ -196,8 +196,9 @@ export function HandDrawnArrow({
   to,
   curve = "auto",
   color = "#3b2a1f",
-  strokeWidth = 1.8,
-  opacity = 0.75,
+  strokeWidth = 1.6,
+  opacity = 0.7,
+  dashed = false,
 }: {
   from: { x: number; y: number };
   to: { x: number; y: number };
@@ -205,11 +206,12 @@ export function HandDrawnArrow({
   color?: string;
   strokeWidth?: number;
   opacity?: number;
+  dashed?: boolean;
 }) {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const dist = Math.hypot(dx, dy);
-  const curveAmount = Math.min(40, dist * 0.25);
+  const curveAmount = Math.min(40, dist * 0.22);
   const perpDir = curve === "left" ? -1 : curve === "right" ? 1 : (dx * dy > 0 ? -1 : 1);
   const ctrlX = (from.x + to.x) / 2 + (-dy / dist) * curveAmount * perpDir;
   const ctrlY = (from.y + to.y) / 2 + (dx / dist) * curveAmount * perpDir;
@@ -231,7 +233,7 @@ export function HandDrawnArrow({
         stroke={color}
         strokeWidth={strokeWidth}
         strokeLinecap="round"
-        strokeDasharray="4 3"
+        strokeDasharray={dashed ? "4 3" : undefined}
       />
       <path
         d={`M ${to.x} ${to.y} L ${h1x} ${h1y} M ${to.x} ${to.y} L ${h2x} ${h2y}`}
