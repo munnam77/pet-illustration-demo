@@ -36,23 +36,30 @@ export function SpecTab() {
         <Card title="🎯 個体特徴の保持アプローチ">
           <ol className="space-y-2.5 text-sm text-[#3b2a1f]/85 list-decimal pl-4">
             <li>
-              <strong>第一段階：</strong>写真は加工せず実画像として保持。Vision AIでペットの部位（目・口・体・足など）座標を抽出。
+              <strong>第一段階（特徴抽出）：</strong>Vision AI でペット種別と部位（目・口・体・足・耳・尾・毛並み）の座標を取得。
+              この情報を後段のイラスト化と矢印配置の両方に使用します。
             </li>
             <li>
-              <strong>第二段階：</strong>抽出座標をもとに HTML / SVG オーバーレイで手書き風の吹き出し・矢印・装飾を合成。
-              すべて手書きフォント（Klee One / Yusei Magic）でレンダリングするため、AI生成によくある文字化け（豆腐文字）は発生しません。
+              <strong>第二段階（イラスト化）：</strong>
+              <em>img2img</em>（元写真を入力）＋ <em>ControlNet (Reference / Lineart / Tile)</em> ＋ <em>IP-Adapter</em>
+              による個体特徴の condition 注入で、毛色・模様・体格・耳形を保持したまま手書き風タッチへ変換。
+              「トイプードルと柴犬」「茶トラと黒トラ」が見分けられる識別精度を担保します。
             </li>
             <li>
-              <strong>第三段階（オプション）：</strong>Stable Diffusion + IP-Adapter / ControlNet で
-              手書きイラスト化レイヤーをABテスト。Gemini Image (nano banana) も併用候補。
+              <strong>第三段階（モデルABテスト）：</strong>
+              本プロトタイプは即時利用可能な画像編集AI（gpt-image-2 / 同等モデル）を使用。
+              本制作では <em>Stable Diffusion XL + IP-Adapter</em> / <em>Gemini 2.5 Image (nano banana)</em>
+              を含む3〜4モデルで実画像をABテストし、貴社のサンプル品質に合致するものを選定します。
             </li>
             <li>
-              <strong>事後処理：</strong>完成画像をPNGで一括書き出し（html-to-image）。
-              フォントもラスタライズされて埋め込まれるため、LINE配信先でも確実に同じ見た目を再現できます。
+              <strong>第四段階（オーバーレイ合成）：</strong>
+              手書き風吹き出し・矢印・装飾（肉球スタンプ・ハート・スター）は HTML / SVG レイヤーで合成。
+              すべて手書きフォント（Klee One / Yusei Magic）でレンダリングするため、文字化け（豆腐文字）は発生しません。
+              完成画像は html-to-image で PNG として書き出し、フォントもラスタライズされて埋め込まれます。
             </li>
           </ol>
           <p className="text-[11px] text-[#3b2a1f]/55 mt-3">
-            ※ 詳細な品質要件確認後、モデル選定と最適化方針を確定します（要件定義フェーズ含む）。
+            ※ 要件定義フェーズで貴社のサンプル品質目標を擦り合わせ、最終モデル構成・コスト・1枚あたり処理時間を確定します。
           </p>
         </Card>
       </div>

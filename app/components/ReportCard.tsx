@@ -50,6 +50,7 @@ export type ReportCardProps = {
   featureCoords?: Partial<Record<FeatureTarget, { x: number; y: number }>>;
   width?: number; // px — the rendered canvas width
   showArrows?: boolean;
+  logoUrl?: string;
 };
 
 export const ReportCard = forwardRef<HTMLDivElement, ReportCardProps>(function ReportCard(
@@ -62,6 +63,7 @@ export const ReportCard = forwardRef<HTMLDivElement, ReportCardProps>(function R
     featureCoords,
     width = 720,
     showArrows = true,
+    logoUrl,
   },
   ref,
 ) {
@@ -128,12 +130,13 @@ export const ReportCard = forwardRef<HTMLDivElement, ReportCardProps>(function R
           background: "#fdf6e8",
         }}
       >
-        {/* Pet photo */}
+        {/* Pet photo (or AI-illustrated version) — Blob URLs / data URLs are
+            same-origin so do NOT set crossOrigin (which would force CORS and
+            fail the html-to-image clone). */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imageUrl}
           alt={petName}
-          crossOrigin="anonymous"
           style={{
             position: "absolute",
             inset: 0,
@@ -214,6 +217,28 @@ export const ReportCard = forwardRef<HTMLDivElement, ReportCardProps>(function R
         {annotations.map((a) => (
           <BubbleBox key={a.id} annotation={a} width={width} height={height} />
         ))}
+
+        {/* Clinic logo (bottom-right, overlay) */}
+        {logoUrl && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={logoUrl}
+            alt={clinicName}
+            style={{
+              position: "absolute",
+              right: 18,
+              bottom: 18,
+              width: width * 0.13,
+              height: width * 0.13,
+              objectFit: "contain",
+              opacity: 0.92,
+              background: "rgba(255,250,242,0.7)",
+              borderRadius: 12,
+              padding: 6,
+              boxShadow: "0 2px 8px rgba(59,42,31,0.18)",
+            }}
+          />
+        )}
       </div>
 
       {/* Closing block */}

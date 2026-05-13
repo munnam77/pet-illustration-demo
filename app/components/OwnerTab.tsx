@@ -1,15 +1,30 @@
 "use client";
 
-import { toPng } from "html-to-image";
-import { useCallback, useRef, useState } from "react";
+import { getFontEmbedCSS, toPng } from "html-to-image";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "./Card";
 import { ReportCard } from "./ReportCard";
 import {
   DEFAULT_ANNOTATIONS,
   FALLBACK_TARGETS,
+  STYLE_OPTIONS,
   type Annotation,
   type FeatureTarget,
+  type StyleId,
 } from "./types";
+
+const LOADING_MESSAGES = [
+  "ペットのお写真を解析中…",
+  "毛色・耳の形・体格を確認中…",
+  "個体の特徴を学習中…",
+  "手書き風タッチに変換中…",
+  "デコレーションを描き加えています…",
+  "病院ロゴ・お名前を配置中…",
+  "細部の調整中…",
+  "もう少しで完成です…",
+];
+
+const ESTIMATED_SECONDS = 90;
 
 export function OwnerTab({
   petName,
@@ -18,7 +33,7 @@ export function OwnerTab({
   setClinicName,
   annotations,
   setAnnotations,
-  logoFile: _logoFile,
+  logoFile,
 }: {
   petName: string;
   setPetName: (v: string) => void;
@@ -28,23 +43,47 @@ export function OwnerTab({
   setAnnotations: (a: Annotation[]) => void;
   logoFile: File | null;
 }) {
-  const [originalUrl, setOriginalUrl] = useState<string | null>(null);
+  const [originalDataUrl, setOriginalDataUrl] = useState<string | null>(null);
   const [originalFile, setOriginalFile] = useState<File | null>(null);
+  const [illustratedDataUrl, setIllustratedDataUrl] = useState<string | null>(null);
+  const [style, setStyle] = useState<StyleId>("watercolor");
   const [screening, setScreening] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadingMsgIdx, setLoadingMsgIdx] = useState(0);
+  const [elapsedSec, setElapsedSec] = useState(0);
   const [featureCoords, setFeatureCoords] = useState<
     Partial<Record<FeatureTarget, { x: number; y: number }>> | undefined
   >(undefined);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const reportRef = useRef<HTMLDivElement>(null);
 
+  // Logo File → object URL for ReportCard
+  const logoUrl = useMemo(() => {
+    if (!logoFile) return undefined;
+    return URL.createObjectURL(logoFile);
+  }, [logoFile]);
+  useEffect(() => {
+    return () => {
+      if (logoUrl) URL.revokeObjectURL(logoUrl);
+    };
+  }, [logoUrl]);
+
   const updateAnnotation = useCallback(
     (id: string, patch: Partial<Annotation>) =>
       setAnnotations(annotations.map((a) => (a.id === id ? { ...a, ...patch } : a))),
     [annotations, setAnnotations],
   );
+
+  // Convert File → base64 data URL (more reliable than Blob URL for html-to-image).
+  const fileToDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
   const handleFile = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -56,12 +95,13 @@ export function OwnerTab({
       return;
     }
     setError(null);
-    setOriginalFile(file);
+    setIllustratedDataUrl(null);
     setFeatureCoords(undefined);
-    const url = URL.createObjectURL(file);
-    setOriginalUrl(url);
+    setOriginalFile(file);
 
-    // Pet detection (gentle — failures fall back silently)
+    const dataUrl = await fileToDataUrl(file);
+    setOriginalDataUrl(dataUrl);
+
     setScreening(true);
     try {
       const fd = new FormData();
@@ -70,7 +110,7 @@ export function OwnerTab({
       const data = await res.json();
       if (res.ok && data?.allowed === false) {
         setError(data.reason_ja || "ペット以外の写真が検出されました。");
-        setOriginalUrl(null);
+        setOriginalDataUrl(null);
         setOriginalFile(null);
         return;
       }
@@ -78,28 +118,6 @@ export function OwnerTab({
       // ignore — screening is best-effort
     } finally {
       setScreening(false);
-    }
-
-    // Feature-point detection for arrow placement
-    setAnalyzing(true);
-    try {
-      const fd = new FormData();
-      fd.append("image", file);
-      const res = await fetch("/api/analyze", { method: "POST", body: fd });
-      const data = await res.json();
-      if (res.ok && Array.isArray(data?.features)) {
-        const coords: Partial<Record<FeatureTarget, { x: number; y: number }>> = {};
-        for (const f of data.features) {
-          if (f.part && typeof f.x === "number" && typeof f.y === "number") {
-            coords[f.part as FeatureTarget] = { x: f.x, y: f.y };
-          }
-        }
-        setFeatureCoords(coords);
-      }
-    } catch {
-      // fall back to default coords
-    } finally {
-      setAnalyzing(false);
     }
   }, []);
 
@@ -119,9 +137,63 @@ export function OwnerTab({
     handleFile(file);
   }, [handleFile]);
 
+  const onGenerate = useCallback(async () => {
+    if (!originalFile) return;
+    setGenerating(true);
+    setError(null);
+    setIllustratedDataUrl(null);
+    setLoadingMsgIdx(0);
+    setElapsedSec(0);
+
+    const startedAt = Date.now();
+    const msgTick = setInterval(
+      () => setLoadingMsgIdx((i) => (i + 1) % LOADING_MESSAGES.length),
+      10_000,
+    );
+    const secTick = setInterval(
+      () => setElapsedSec(Math.floor((Date.now() - startedAt) / 1000)),
+      1000,
+    );
+
+    try {
+      // Run feature detection and image generation in parallel.
+      const analyzeFd = new FormData();
+      analyzeFd.append("image", originalFile);
+      const analyzePromise = fetch("/api/analyze", { method: "POST", body: analyzeFd })
+        .then((r) => r.json())
+        .catch(() => null);
+
+      const genFd = new FormData();
+      genFd.append("image", originalFile);
+      genFd.append("style", style);
+      const genRes = await fetch("/api/generate", { method: "POST", body: genFd });
+      const genData = await genRes.json();
+      if (!genRes.ok) throw new Error(genData?.error || "生成に失敗しました。");
+      setIllustratedDataUrl(genData.imageDataUrl);
+
+      const analyzeData = await analyzePromise;
+      if (analyzeData && Array.isArray(analyzeData.features)) {
+        const coords: Partial<Record<FeatureTarget, { x: number; y: number }>> = {};
+        for (const f of analyzeData.features) {
+          if (f.part && typeof f.x === "number" && typeof f.y === "number") {
+            coords[f.part as FeatureTarget] = { x: f.x, y: f.y };
+          }
+        }
+        setFeatureCoords(coords);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "予期せぬエラーが発生しました。");
+    } finally {
+      clearInterval(msgTick);
+      clearInterval(secTick);
+      setGenerating(false);
+    }
+  }, [originalFile, style]);
+
   const onReset = useCallback(() => {
     setOriginalFile(null);
-    setOriginalUrl(null);
+    setOriginalDataUrl(null);
+    setIllustratedDataUrl(null);
     setFeatureCoords(undefined);
     setError(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -130,14 +202,16 @@ export function OwnerTab({
   const onDownload = useCallback(async () => {
     if (!reportRef.current) return;
     setDownloading(true);
+    setError(null);
     try {
-      // Pre-load fonts inside html-to-image's offscreen render.
-      // html-to-image automatically embeds web fonts referenced via CSS variables.
       await document.fonts.ready;
+      const fontEmbedCSS = await getFontEmbedCSS(reportRef.current);
       const dataUrl = await toPng(reportRef.current, {
         cacheBust: true,
         pixelRatio: 2,
         backgroundColor: "#fdf6e8",
+        fontEmbedCSS,
+        skipFonts: false,
         style: { transform: "none" },
       });
       const a = document.createElement("a");
@@ -151,9 +225,14 @@ export function OwnerTab({
     }
   }, [petName]);
 
+  // Decide which image to use as the report background:
+  // 1. AI-illustrated (preferred — matches client's "手書き風イラスト変換" requirement)
+  // 2. Otherwise fall back to the original photo (preview before generation)
+  const reportImage = illustratedDataUrl || originalDataUrl;
+
   return (
     <div className="space-y-6">
-      {!originalUrl && (
+      {!originalDataUrl && (
         <UploadCard
           fileInputRef={fileInputRef}
           onPick={handleFile}
@@ -163,70 +242,105 @@ export function OwnerTab({
         />
       )}
 
-      {originalUrl && (screening || analyzing) && (
+      {screening && (
         <Card>
           <p className="text-sm text-[#3b2a1f]/70 text-center py-2">
-            {screening
-              ? "🔍 写真の確認中…"
-              : "🐾 ペットの特徴を解析中…（矢印の指し位置を最適化）"}
+            🔍 写真の確認中…
           </p>
         </Card>
       )}
 
-      {originalUrl && !screening && (
-        <>
-          <Card>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <span className="text-sm text-[#3b2a1f]/70">
-                {analyzing
-                  ? "📍 ペット特徴の解析中…"
-                  : "✅ ご様子レポートが完成しました。右下からダウンロードできます。"}
-              </span>
-              <div className="sm:ml-auto flex gap-2 flex-wrap">
+      {originalDataUrl && !screening && !generating && (
+        <Card>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <span className="text-sm font-medium text-[#3b2a1f]/70">仕上げのスタイル：</span>
+            <div className="flex flex-wrap gap-2">
+              {STYLE_OPTIONS.map((s) => (
                 <button
-                  onClick={onReset}
-                  className="px-4 py-2 rounded-full text-sm font-medium border border-[#3b2a1f]/15 bg-white hover:border-[#3b2a1f]/40"
+                  key={s.id}
+                  onClick={() => setStyle(s.id)}
+                  className={`px-3.5 py-2 rounded-full text-sm font-medium border transition ${
+                    style === s.id
+                      ? "bg-[#3b2a1f] text-[#fffaf2] border-[#3b2a1f]"
+                      : "bg-white text-[#3b2a1f] border-[#3b2a1f]/15 hover:border-[#3b2a1f]/40"
+                  }`}
+                  title={s.description}
                 >
-                  別の写真にする
+                  <span className="mr-1.5">{s.emoji}</span>
+                  {s.label}
                 </button>
+              ))}
+            </div>
+            <div className="sm:ml-auto flex gap-2 flex-wrap">
+              <button
+                onClick={onReset}
+                className="px-4 py-2 rounded-full text-sm font-medium border border-[#3b2a1f]/15 bg-white hover:border-[#3b2a1f]/40"
+              >
+                別の写真にする
+              </button>
+              {illustratedDataUrl ? (
                 <button
                   onClick={onDownload}
-                  disabled={downloading || analyzing}
+                  disabled={downloading}
                   className={`px-6 py-2 rounded-full text-sm font-semibold text-white shadow-sm transition ${
-                    downloading || analyzing
+                    downloading
                       ? "bg-[#3b2a1f]/30 cursor-not-allowed"
                       : "bg-[#e89a5a] hover:bg-[#d8884a]"
                   }`}
                 >
                   {downloading ? "保存中…" : "⬇ PNG画像をダウンロード"}
                 </button>
-              </div>
-            </div>
-          </Card>
-
-          <div className="flex justify-center">
-            <div className="overflow-x-auto max-w-full">
-              <ReportCard
-                ref={reportRef}
-                imageUrl={originalUrl}
-                petName={petName}
-                clinicName={clinicName}
-                annotations={annotations}
-                featureCoords={featureCoords || FALLBACK_TARGETS}
-                width={720}
-              />
+              ) : (
+                <button
+                  onClick={onGenerate}
+                  className="px-6 py-2 rounded-full text-sm font-semibold bg-[#e89a5a] hover:bg-[#d8884a] text-white shadow-sm"
+                >
+                  ✨ イラスト化する
+                </button>
+              )}
             </div>
           </div>
+        </Card>
+      )}
 
-          <AnnotationEditor
-            petName={petName}
-            setPetName={setPetName}
-            clinicName={clinicName}
-            setClinicName={setClinicName}
-            annotations={annotations}
-            updateAnnotation={updateAnnotation}
-          />
-        </>
+      {generating && (
+        <Card>
+          <div className="flex flex-col items-center gap-3 py-6">
+            <div className="text-sm font-medium text-[#3b2a1f]/85 text-center">
+              ✨ {LOADING_MESSAGES[loadingMsgIdx]}
+            </div>
+            <div className="w-full max-w-[420px]">
+              <div className="h-1.5 rounded-full bg-[#3b2a1f]/10 overflow-hidden">
+                <div
+                  className="h-full bg-[#e89a5a] transition-all duration-1000 ease-linear"
+                  style={{
+                    width: `${Math.min(95, Math.round((elapsedSec / ESTIMATED_SECONDS) * 100))}%`,
+                  }}
+                />
+              </div>
+              <p className="text-[11px] text-[#3b2a1f]/55 mt-1.5 text-center">
+                経過 {elapsedSec}秒 / 目安 約{ESTIMATED_SECONDS}秒
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {reportImage && !screening && (
+        <div className="flex justify-center">
+          <div className="overflow-x-auto max-w-full">
+            <ReportCard
+              ref={reportRef}
+              imageUrl={reportImage}
+              petName={petName}
+              clinicName={clinicName}
+              annotations={annotations}
+              featureCoords={featureCoords || FALLBACK_TARGETS}
+              logoUrl={logoUrl}
+              width={720}
+            />
+          </div>
+        </div>
       )}
 
       {error && (
@@ -235,7 +349,18 @@ export function OwnerTab({
         </p>
       )}
 
-      {!originalUrl && <HowItWorks />}
+      {originalDataUrl && !screening && (
+        <AnnotationEditor
+          petName={petName}
+          setPetName={setPetName}
+          clinicName={clinicName}
+          setClinicName={setClinicName}
+          annotations={annotations}
+          updateAnnotation={updateAnnotation}
+        />
+      )}
+
+      {!originalDataUrl && <HowItWorks />}
     </div>
   );
 }
@@ -366,12 +491,12 @@ function HowItWorks() {
     {
       icon: "📱",
       title: "飼い主様（LINE / LIFF）",
-      body: "病院のLINE公式アカウントに友だち追加 →「ペット画像を作る」メニューからLIFFが起動 → 写真をアップロード。",
+      body: "病院のLINE公式アカウントに友だち追加 →「ペット画像を作る」メニューからLIFFが起動 → 写真と画風を選択。",
     },
     {
-      icon: "🐾",
-      title: "ペット特徴の自動解析",
-      body: "ペットの目・口・体・足など各部位の位置を解析し、レポートの矢印が自動的にその部位を指します。",
+      icon: "🎨",
+      title: "AI による手書き風イラスト化",
+      body: "ペットの個体特徴（毛色・体格・耳の形・表情）を保ったまま、手書き風イラストへ変換。仕上げに矢印・吹き出し・装飾を合成。",
     },
     {
       icon: "💌",
